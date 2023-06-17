@@ -358,6 +358,9 @@ if __name__ == "__main__":
 	
 	while True:
 		try:
+			# Clear console 
+			os.system("clear")
+			# Output the values to the console
 			print("Relative distance: ", encoderThread.distance)
 			print("Car speed: ", encoderThread.speed)
 			print("Compass direction: ", compassThread.direction)
