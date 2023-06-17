@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smoothie.js Chart Example</title>
+  <script src="https://cdn.jsdelivr.net/npm/smoothie"></script>
+</head>
+<body>
+  <canvas id="chart" width="400" height="200"></canvas>
+
+  <script>
+    // Create a new SmoothieChart instance
+    var chart = new SmoothieChart();
+
+    // Create a new TimeSeries for the data
+    var timeSeries = new TimeSeries();
+
+    // Add the TimeSeries to the chart
+    chart.addTimeSeries(timeSeries, { lineWidth: 2, strokeStyle: 'rgba(255, 255, 255, 1)' });
+
+    // Set up a random data generator
+    function generateRandomValue() {
+      return Math.random() * 100;
+    }
+
+    // Update the chart with new random data every 500 milliseconds
+    setInterval(function() {
+      var value = generateRandomValue();
+      timeSeries.append(new Date().getTime(), value);
+    }, 500);
+
+    // Stream the chart to the canvas element
+    chart.streamTo(document.getElementById("chart"), 1000);
+  </script>
+</body>
+</html>

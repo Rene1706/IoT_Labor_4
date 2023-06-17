@@ -29,7 +29,8 @@
   <body>
 	
 	<script type="text/javascript" src="smoothie.js"></script>
-
+	UltraSound Right:<br>
+	<canvas class="canvas" id="range_rChart" width="200" height="100"></canvas><br>
 	<!--Aufgabe 4-->
 	<!--Für jeden Datensatz muss eine Zeichenfläche 'canvas' definiert werden-->
 	<canvas class= "canvas" id= "range_rChart1" width= "200" height= "100" ></canvas><br>
@@ -45,8 +46,7 @@
 		// Aufgabe 4
 		//
 		// Damit die Daten dargestellt werden können muss ein Websocket geöffnet werden, der bei jeder neuen Nachricht die Daten aus dieser Nachricht rausholt und visualisiert.
-		var dataSocket = ;
-
+		var dataSocket = new WebSocket("ws://localhost:8081"/ws);
 
 		dataSocket.onopen = function(){  
         		console.log("connected"); 
@@ -65,7 +65,7 @@
 		//
 		// Für jeden Datensatz muss ein eine SmoothieChart in einem vorher definierten canvas-Element erstellt werden.
 		var range_rChart = new SmoothieChart({ minValue: 0, maxValue: 300,
-grid: { strokeStyle: ’rgb(125, 0, 0)’, fillStyle: ’rgb(60, 0, 0)’,
+grid: { strokeStyle: "rgb(125, 0, 0)", fillStyle: "rgb(60, 0, 0)",
 lineWidth: 1, millisPerLine: 250, verticalSections: 6 } });
 
 		var range_r = new TimeSeries();

@@ -6,10 +6,11 @@ import tornado.web
 import tornado.websocket
 import io
 import json
+import os
 
 import threading
-from ikt_car_sensorik import *
-import _servo_ctrl
+#from ikt_car_sensorik import *
+#import _servo_ctrl
 from math import acos, sqrt, degrees
 
 
@@ -17,6 +18,14 @@ from math import acos, sqrt, degrees
 # Aufgabe 4
 #
 # Der Tornado Webserver soll die Datei index.html am Port 8081 zur Verfügung stellen
+# Der Server bietet eine Datei index.html am Port 8081 an.
+from tornado.options import define, options
+define("port", default=8081, help="run on the given port ", type=int)
+
+class IndexHandler(tornado.web.RequestHandler):
+	@tornado.web.asynchronous
+	def get(self):
+		self.render("index_test.html")
 
 # Aufgabe 3
 #
@@ -24,7 +33,7 @@ from math import acos, sqrt, degrees
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
 	'''Definition der Operationen des WebSocket Servers'''
 
-	print "hello WebSocketHandler"
+	print("hello WebSocketHandler")
 
 	def open(self):
 		return 0
@@ -82,7 +91,15 @@ class DrivingThread(threading.Thread):
 		
 
 if __name__ == "__main__":
-	print "Main Thread started"
+	print("Main Thread started")
+	clients = []
+	# Websocket Server initialization
+	tornado.options.parse_command_line()
+	app = tornado.web.Application(handlers=[(r"/ws", WebSocketHandler), (r"/", IndexHandler), (r" / ( . * ) ", tornado.web.StaticFileHandler, { "path ": os.path.dirname(__file__)}),])
+	httpServer = tornado.httpserver.HTTPServer(app)
+	httpServer.listen(options.port)
+	print(" Listening on port : ", options.port)
+	tornado.ioloop.IOLoop.instance().start()
 	# Aufgabe 3
 	#
 	# Erstellen und starten Sie hier eine Instanz des DataThread und starten Sie den Webserver .
