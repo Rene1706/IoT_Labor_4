@@ -98,26 +98,33 @@ class Compass(object):
 	#
 	# Diese Methode soll den Kompasswert auslesen und zurueckgeben. 
 	def get_bearing(self):
-		return 0
+		bear_high_byte = bus.read_byte_data(self.address, 2)
+		bear_low_byte = bus.read_byte_data(self.address, 3)
+		raw = (bear_high_byte << 8) + bear_low_byte
+		bearing = raw/10.0
+		return bearing
 
 class CompassThread(threading.Thread):
 	''' Thread-class for holding compass data '''
 
 	# Compass bearing value
 	bearing = 0
-
+	compass = None
+	stopped = False
 	# Aufgabe 4
 	#
 	# Hier muss der Thread initialisiert werden.
 	def __init__(self, address):
-		return 0
+		threading.Thread.__init__(self)
+		self.compass = Compass(address)
+		self.start()
 
 	# Aufgabe 4
 	#
 	# Diese Methode soll den Kompasswert aktuell halten.
 	def run(self):
 		while not self.stopped:
-			continue
+			self.bearing = self.compass.get_bearing()
 
 	def stop(self):
 		self.stopped = True
