@@ -104,12 +104,33 @@ class Compass(object):
 		raw = (bear_high_byte << 8) + bear_low_byte
 		bearing = raw/10.0
 		return bearing
+	
+	def get_compass_direction(angle):
+		if angle >= 337.5 or angle < 22.5:
+			return "North"
+		elif angle >= 22.5 and angle < 67.5:
+			return "Northeast"
+		elif angle >= 67.5 and angle < 112.5:
+			return "East"
+		elif angle >= 112.5 and angle < 157.5:
+			return "Southeast"
+		elif angle >= 157.5 and angle < 202.5:
+			return "South"
+		elif angle >= 202.5 and angle < 247.5:
+			return "Southwest"
+		elif angle >= 247.5 and angle < 292.5:
+			return "West"
+		elif angle >= 292.5 and angle < 337.5:
+			return "Northwest"
+		else:
+			return "Unknown"
 
 class CompassThread(threading.Thread):
 	''' Thread-class for holding compass data '''
 
 	# Compass bearing value
 	bearing = 0
+	direction = "Unknown"
 	compass = None
 	stopped = False
 	# Aufgabe 4
@@ -126,6 +147,7 @@ class CompassThread(threading.Thread):
 	def run(self):
 		while not self.stopped:
 			self.bearing = self.compass.get_bearing()
+			self.direction = self.compass.get_compass_direction(self.bearing)
 
 	def stop(self):
 		self.stopped = True
@@ -230,7 +252,7 @@ class Encoder(object):
 	# number of encoder steps
 	count = 0
 
-	def __init__(self, pin=3):
+	def __init__(self, pin=23):
 		self.pin = pin
 		GPIO.setmode(GPIO.BCM)
 		GPIO.setup(self.pin, GPIO.IN)
@@ -326,3 +348,32 @@ if __name__ == "__main__":
 	# Aufgabe 6
 	#
 	# Hier sollen saemtlichen Messwerte periodisch auf der Konsole ausgegeben werden.
+	ultrasonicThreadFront = UltrasonicThread(ultrasonic_front_i2c_address)
+	ultrasonicThreadRear = UltrasonicThread(ultrasonic_rear_i2c_address)
+	compassThread = CompassThread(compass_i2c_address)
+
+	encoder = Encoder(encoder_pin)
+	encoderThread = EncoderThread(encoder)
+	infraredThread = InfraredThread(infrared_i2c_address, encoder)
+	
+	while True:
+		try:
+			print("Relative distance: ", encoderThread.distance)
+			print("Car speed: ", encoderThread.speed)
+			print("Compass direction: ", compassThread.direction)
+			print("Distance to obstacle (front): ", ultrasonicThreadFront.distance)
+			print("Distance to obstacle (read): ", ultrasonicThreadRear.distance)
+			print("Distance to obstacle (side): ", infraredThread.distance)
+			print("Mean brightness: ", (ultrasonicThreadFront.brightness+ultrasonicThreadRear.brightness)/2.0)
+			print("Parking space length: ", infraredThread.parking_space_length)
+		except KeyboardInterrupt:
+			break
+
+	# Cleanup
+	ultrasonicThreadFront.stop()
+	ultrasonicThreadRear.stop()
+	compassThread.stop()
+	encoderThread.stop()
+	infraredThread.stop()
+	bus.close()
+		
