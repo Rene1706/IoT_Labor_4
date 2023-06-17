@@ -27,20 +27,30 @@ class Ultrasonic():
  	# Aufgabe 2
  	#
 	# Diese Methode soll ein Datenbyte an den Ultraschallsensor senden um eine Messung zu starten
-	def write(self,value):
-		return 0
+	def write(self,value=0x51):
+		bus.write_byte_data(self.address, 0x00, value)
 
 	# Aufgabe 2
 	#
 	# Diese Methode soll den Lichtwert auslesen und zurueckgeben.
 	def get_brightness(self):
-		return 0
+		brightness = bus.read_byte_data(self.address, 0x01)
+		return brightness
 
 	# Aufgabe 2
 	#
 	# Diese Methode soll die Entfernung auslesen und zurueckgeben. 
 	def get_distance(self):
-		return 0
+		# Start measurment
+		self.write()
+		sleep(0.07)
+
+		# Read Registers for distance
+		range_high_byte = bus.read_byte_date(self.address, 0x02)
+		range_low_byte = bus.read_byte_data(self.address, 0x03)
+		print(type(range_high_byte))
+		distance = (range_high_byte << 8) + range_low_byte
+		return distance
 
 	def get_address(self):
 		return self.address
@@ -53,19 +63,23 @@ class UltrasonicThread(threading.Thread):
 
 	# brightness value
 	brightness = 0
-
+	stopped = False
+	ultrasonicSensor = None
 	# Aufgabe 4
 	#
 	# Hier muss der Thread initialisiert werden.
 	def __init__(self, address):
-		return 0
+		threading.Thread.__init__(self)
+		self.ultrasonicSensor = Ultrasonic(address)
+		self.start()
 
 	# Aufgabe 4
 	#
 	# Schreiben Sie die Messwerte in die lokalen Variablen
 	def run(self):
 		while not self.stopped:
-			continue
+			self.distance = self.ultrasonicSensor.get_distance()
+			self.brightness = self.ultrasonicSensor.get_brightness()
 			
 	def stop(self):
 		self.stopped = True
@@ -238,14 +252,14 @@ if __name__ == "__main__":
 	# Tragen Sie die i2c Adressen der Sensoren hier ein
 
 	# The i2c addresses of front and rear ultrasound sensors
-	ultrasonic_front_i2c_address = 0x00;
-	ultrasonic_rear_i2c_address = 0x00;
+	ultrasonic_front_i2c_address = 0x70
+	ultrasonic_rear_i2c_address = 0x71
 
 	# The i2c address of the compass sensor
-	compass_i2c_address = 0x00 
+	compass_i2c_address = 0x60 
 
 	# The i2c address of the infrared sensor
-	infrared_i2c_address = 0x00
+	infrared_i2c_address = 0x04f # Send 0x00 once in the beginning
 
 	# Aufgabe 6
 	#
