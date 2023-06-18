@@ -54,6 +54,7 @@
 	<button id="startBtn" onclick="startParking()">Start Park</button>
 	<button id="stopBtn" onclick="stopParking()">Stop Park</button>
 	<p id="parkingTime"></p>
+	<p id="parkingDistance"></p>
 
 
 	<script type="text/javascript">
@@ -80,6 +81,8 @@
 			parkingLengthSeries.append(new Date().getTime(), parseFloat(data.parkingSpaceLength));
 			var parkingTime = document.getElementById("parkingTime");
 			parkingTime.textContent = "Parking time (sec): " + data.parkingTime;
+			var parkingDistance = document.getElementById("parkingDistance");
+			parkingDistance.textContent = "Parking distance (cm): " + data.parkingDistance;
 		};
 
 		dataSocket.onclose = function (evt) {

@@ -66,6 +66,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 class DataThread(threading.Thread):
 	'''Thread zum Senden der Zustandsdaten an alle Clients aus der Client-Liste'''
 	parking_time = 0.0
+	parking_distance = 0.0
 	# Aufgabe 3
 	#
 	# Hier muss der Thread initialisiert werden.
@@ -97,7 +98,8 @@ class DataThread(threading.Thread):
 				"distance": self.infraredThread.distance,
 				"bearing": self.compassThread.bearing,
 				"speed": self.encoderThread.speed,
-				"parkingTime": self.parking_time
+				"parkingTime": self.parking_time,
+				"parkingDistance": self.parking_distance
 			}
 			json_data = {}
 			json_data = json.dumps(sensor_data)
@@ -126,6 +128,7 @@ class DrivingThread(threading.Thread):
 		self.dataThread = dataThread
 		self.stopped = False
 		self.start_time = None
+		self.parking_driven_length_start = None
 		
 	# Einparken
 	#
@@ -133,13 +136,24 @@ class DrivingThread(threading.Thread):
 	def run(self):
 		while True:
 			if parking_event.is_set():
+				# Check/Update parking timer
 				if not self.start_time:
 					self.start_time = time.time()
 				elapsed_time = time.time() - self.start_time
 				self.dataThread.parking_time = float(round(elapsed_time,2))
+
+				# Check/update parking_driven_length
+				if not self.parking_driven_length_start:
+					self.parking_driven_length_start = self.dataThread.encoderThread.distance
+				driven_distance = self.dataThread.encoderThread.distance - self.parking_driven_length_start
+				self.dataThread.parking_distance = float(round(driven_distance, 2))
 			else:
+				# Reset parking timer
 				self.start_time = None
 				self.dataThread.parking_time = 0.0
+				# Reset parking driven length
+				self.parking_driven_length_start = None
+				self.dataThread.parking_distance = 0.0
 
 	def stop(self):
 		parking_event.clear()
