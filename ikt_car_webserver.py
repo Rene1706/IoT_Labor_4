@@ -83,9 +83,9 @@ class DataThread(threading.Thread):
 	def run(self):
 		while not self.stopped:
 			sensor_data = {
-				"brightness": self.ultrasonicThreadFront.brightness,
-				"distance": self.ultrasonicThreadFront.distance,
-				"rearDistance": self.ultrasonicThreadRear.distance,
+				"parkingSpaceLength": self.infraredThread.parking_space_length,
+				"distance": self.infraredThread.distance,
+				"bearing": self.compassThread.bearing,
 				"speed": self.encoderThread.speed
 			}
 			json_data = {}

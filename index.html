@@ -31,24 +31,21 @@
 			position: relative;
 		}
 	</style>
-
+	<script src="https://cdn.jsdelivr.net/npm/smoothie"></script>
 </head>
 
 
 <body>
-	<script src="https://cdn.jsdelivr.net/npm/smoothie"></script>
 	<!--script type="text/javascript" src="smoothie.js"></script-->
-	UltraSound Right:<br>
-	<canvas class="canvas" id="range_rChart" width="200" height="100"></canvas><br>
 	<!--Aufgabe 4-->
 	<!--Für jeden Datensatz muss eine Zeichenfläche 'canvas' definiert werden-->
-	UltraSound Right:<br>
+	Geschwindigkeit:<br>
 	<canvas class="canvas" id="range_rChart1" width="200" height="100"></canvas><br>
-	UltraSound Right:<br>
+	Himmelsrichtung:<br>
 	<canvas class="canvas" id="range_rChart2" width="200" height="100"></canvas><br>
-	UltraSound Right:<br>
+	Abstand zum Hinternis:<br>
 	<canvas class="canvas" id="range_rChart3" width="200" height="100"></canvas><br>
-	UltraSound Right:<br>
+	Länge Parklücke:<br>
 	<canvas class="canvas" id="range_rChart4" width="200" height="100"></canvas><br>
 
 
@@ -66,14 +63,17 @@
 			websocket.send("connection established")
 		};
 
-		dataSocket.onmessage = function (evt) {
+		dataSocket.onmessage = function (event) {
 			// Aufgabe 4
 			// Die empfangenen Daten müssen an die Charts weitergegeben werden.
 			console.log(event.data)
 			var data = JSON.parse(event.data);
 
 			// Update the chart with the received sensor data
-			range_r.append(new Date().getTime(), parseFloat(data.distance));
+			speedSeries.append(new Date().getTime(), parseFloat(data.speed));
+			bearingSeries.append(new Date().getTime(), parseFloat(data.bearing));
+			distanceSeries.append(new Date().getTime(), parseFloat(data.distance));
+			parkingLengthSeries.append(new Date().getTime(), parseFloat(data.parkingSpaceLength));
 		};
 
 		dataSocket.onclose = function (evt) {
@@ -84,53 +84,54 @@
 		// Aufgabe 4
 		//
 		// Für jeden Datensatz muss ein eine SmoothieChart in einem vorher definierten canvas-Element erstellt werden.
-		var range_r = new TimeSeries()
-		var range_rChart = new SmoothieChart({
+		
+		// Speed Chart
+		var speedChart = new SmoothieChart({
 			minValue: 0, maxValue: 300,
 			grid: {
 				strokeStyle: "rgb(125, 0, 0)", fillStyle: "rgb(60, 0, 0)",
 				lineWidth: 1, millisPerLine: 250, verticalSections: 6
 			}
 		});
+		var speedSeries = new TimeSeries();
+		speedChart.addTimeSeries(speedSeries);
+		speedChart.streamTo(document.getElementById("range_rChart1"), 100);
 
-		var range_r = new TimeSeries();
-		range_rChart.addTimeSeries(range_r);
-		range_rChart.streamTo(document.getElementById("range_rChart1"), 100);
-		var range_rChart = new SmoothieChart({
+		// Bearing Chart
+		var bearingChart = new SmoothieChart({
 			minValue: 0, maxValue: 300,
 			grid: {
 				strokeStyle: 'rgb(125, 0, 0)', fillStyle: 'rgb(60, 0, 0)',
 				lineWidth: 1, millisPerLine: 250, verticalSections: 6
 			}
 		});
+		var bearingSeries = new TimeSeries();
+		bearingChart.addTimeSeries(bearingSeries);
+		bearingChart.streamTo(document.getElementById("range_rChart2"), 100);
 
-		var range_r = new TimeSeries();
-		range_rChart.addTimeSeries(range_r);
-		range_rChart.streamTo(document.getElementById("range_rChart2"), 100);
-
-		var range_rChart = new SmoothieChart({
+		// Distance Chart
+		var distanceChart = new SmoothieChart({
 			minValue: 0, maxValue: 300,
 			grid: {
 				strokeStyle: 'rgb(125, 0, 0)', fillStyle: 'rgb(60, 0, 0)',
 				lineWidth: 1, millisPerLine: 250, verticalSections: 6
 			}
 		});
+		var distanceSeries = new TimeSeries();
+		distanceChart.addTimeSeries(distanceSeries);
+		distanceChart.streamTo(document.getElementById("range_rChart3"), 100);
 
-		var range_r = new TimeSeries();
-		range_rChart.addTimeSeries(range_r);
-		range_rChart.streamTo(document.getElementById("range_rChart3"), 100);
-
-		var range_rChart = new SmoothieChart({
+		// ParkingLengthChart
+		var parkingLengthChart = new SmoothieChart({
 			minValue: 0, maxValue: 300,
 			grid: {
 				strokeStyle: 'rgb(125, 0, 0)', fillStyle: 'rgb(60, 0, 0)',
 				lineWidth: 1, millisPerLine: 250, verticalSections: 6
 			}
 		});
-
-		var range_r = new TimeSeries();
-		range_rChart.addTimeSeries(range_r);
-		range_rChart.streamTo(document.getElementById("range_rChart4"), 100);
+		var parkingLengthSeries = new TimeSeries();
+		parkingLengthChart.addTimeSeries(parkingLengthSeries);
+		parkingLengthChart.streamTo(document.getElementById("range_rChart4"), 100);
 
 
 	</script>
