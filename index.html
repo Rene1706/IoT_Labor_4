@@ -51,6 +51,10 @@
 
 	<!--Einparken -->
 	<!--Es müssen Knöpfe zum Starten und Stoppen des Parkvorgangs definiert werden-->
+	<button id="startBtn" onclick="startParking()">Start Park</button>
+	<button id="stopBtn" onclick="stopParking()">Stop Park</button>
+	<p id="parkingTime"></p>
+
 
 	<script type="text/javascript">
 		// Aufgabe 4
@@ -74,10 +78,21 @@
 			bearingSeries.append(new Date().getTime(), parseFloat(data.bearing));
 			distanceSeries.append(new Date().getTime(), parseFloat(data.distance));
 			parkingLengthSeries.append(new Date().getTime(), parseFloat(data.parkingSpaceLength));
+			var parkingTime = document.getElementById("parkingTime");
+			parkingTime.textContent = "Parking time (sec): " + data.parkingTime;
 		};
 
 		dataSocket.onclose = function (evt) {
 			console.log("disconnected");
+		};
+
+		// Function to send a signal to the webserver
+		function startParking() {
+			dataSocket.send("Start parking");
+		};
+
+		function stopParking() {
+			dataSocket.send("Stop parking");
 		};
 
 

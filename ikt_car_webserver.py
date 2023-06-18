@@ -12,8 +12,11 @@ import threading
 from ikt_car_sensorik_test import *
 #import _servo_ctrl
 from math import acos, sqrt, degrees
+import time
 
 
+# Parking
+parking_event = threading.Event()
 
 # Aufgabe 4
 #
@@ -42,6 +45,13 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
 	def on_message(self, message):
 		print("message received {}".format(message))
+		print(type(message))
+		print(str(message))
+		if str(message) == "Start parking":
+			print("Event is set")
+			parking_event.set()
+		if str(message) == "Stop parking":
+			parking_event.clear()
 		#json_message = {}
 		#json_message["response"] = message
 		#json_message = json.dumps(json_message)
@@ -55,7 +65,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
 class DataThread(threading.Thread):
 	'''Thread zum Senden der Zustandsdaten an alle Clients aus der Client-Liste'''
-
+	parking_time = 0.0
 	# Aufgabe 3
 	#
 	# Hier muss der Thread initialisiert werden.
@@ -86,12 +96,14 @@ class DataThread(threading.Thread):
 				"parkingSpaceLength": self.infraredThread.parking_space_length,
 				"distance": self.infraredThread.distance,
 				"bearing": self.compassThread.bearing,
-				"speed": self.encoderThread.speed
+				"speed": self.encoderThread.speed,
+				"parkingTime": self.parking_time
 			}
 			json_data = {}
 			json_data = json.dumps(sensor_data)
 			for client in self.clients:
 				client.write_message(json_data)
+			sleep(0.1)
 
 	def stop(self):
 		self.stopped = True
@@ -103,22 +115,60 @@ class DataThread(threading.Thread):
 
 class DrivingThread(threading.Thread):
 	'''Thread zum Fahren des Autos'''
-
+	min_parking_length = 99999999.9
+	parking_phases = {"drive_back": True, "turn_right": False, "turn_left": False, "check_alignment": False}
+	
 	# Einparken
 	#
 	# Hier muss der Thread initialisiert werden.
-	def __init__(self):
-		return 0
+	def __init__(self, dataThread):
+		threading.Thread.__init__(self)
+		self.dataThread = dataThread
+		self.stopped = False
+		self.start_time = None
 		
 	# Einparken
 	#
 	# Definieren Sie einen Thread, der auf die ueber den Webserver erhaltenen Befehle reagiert und den Einparkprozess durchfuehrt
 	def run(self):
-		while not self.stopped:
-			continue
+		while True:
+			if parking_event.is_set():
+				if not self.start_time:
+					self.start_time = time.time()
+				elapsed_time = time.time() - self.start_time
+				self.dataThread.parking_time = float(round(elapsed_time,2))
+			else:
+				self.start_time = None
+				self.dataThread.parking_time = 0.0
 
 	def stop(self):
-		self.stopped = True
+		parking_event.clear()
+		self.dataThread.stop()
+		print("Parking thred stopped")
+
+	def get_min_parking_length(self):
+		w = 3.0 #TODO get car width
+		p = self.dataThread.infraredThread.distance
+		f = 3.0 #TODO get distance back axial to front
+		r = 2.0 #TODO get effective tourn radius
+		b = 2.0 #TODO get distance back axial to back
+
+		l = sqrt(2*r*w+f**2+b)
+		self.min_parking_length = l
+
+	def automate_parking(self):
+		# 1. Mit Heck bis ans heck des autos (distance > p)
+		# 2. Rechts einlenken max
+		# 3. Bestimmte strecke fahren
+		# 4. Links einlenken max
+		# 5. Halten wenn hinten fast berührt 
+		# 6. Checken ob compass anfang = compass ende (parallel ?? Lenkwinkel??)
+		# 7. 
+		#if self.parking_phases["drive_back"] == True:
+		#	if self.dataThread.infraredThred.distance > 
+		pass
+
+		
 		
 
 if __name__ == "__main__":
@@ -155,9 +205,15 @@ if __name__ == "__main__":
 		dataThread = DataThread(clients)
 		dataThread.set_sensorik(ultrasonic_front_i2c_address, ultrasonic_rear_i2c_address, compass_i2c_address, infrared_i2c_address, encoder_pin)
 		dataThread.start()
+		drivingThread = DrivingThread(dataThread)
+		drivingThread.start()
+
+
+
 		tornado.ioloop.IOLoop.instance().start()
 	except KeyboardInterrupt as e:
 		dataThread.stop()
+		drivingThread.stop()
 		print(e)
 		
 
