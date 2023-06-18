@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Sensor Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/smoothie"></script>
+</head>
+
+<body>
+    <canvas id="smoothie-chart" width="800" height="400"></canvas>
+
+    <script type="text/javascript">
+        var websocket = new WebSocket("ws://localhost:8081/ws");
+
+        websocket.onopen = function () {
+            console.log("connected")
+            websocket.send("connection established")
+        };
+
+        var chart = new SmoothieChart();
+        var dataSeries = new TimeSeries()
+        chart.addTimeSeries(dataSeries, { strokeStyle: 'rgb(0, 255, 0)', fillStyle: 'rgba(0, 255, 0, 0.4)', lineWidth: 3 });
+        chart.streamTo(document.getElementById("smoothie-chart"), 1000);
+
+        websocket.onmessage = function (event) {
+            console.log(event.data)
+            var data = JSON.parse(event.data);
+
+            // Update the chart with the received sensor data
+            dataSeries.append(new Date().getTime(), parseFloat(data.distance));
+        };
+    </script>
+</body>
+
+</html>

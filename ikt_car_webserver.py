@@ -9,7 +9,7 @@ import json
 import os
 
 import threading
-#from ikt_car_sensorik import *
+from ikt_car_sensorik_test import *
 #import _servo_ctrl
 from math import acos, sqrt, degrees
 
@@ -25,7 +25,7 @@ define("port", default=8081, help="run on the given port ", type=int)
 class IndexHandler(tornado.web.RequestHandler):
 	@tornado.web.asynchronous
 	def get(self):
-		self.render("index_test.html")
+		self.render("index.html")
 
 # Aufgabe 3
 #
@@ -36,13 +36,21 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 	print("hello WebSocketHandler")
 
 	def open(self):
-		return 0
+		if self not in clients:
+			print("new connection: {}".format(self.request.remote_ip))
+			clients.append(self)
 
 	def on_message(self, message):
-		return 0
+		print("message received {}".format(message))
+		#json_message = {}
+		#json_message["response"] = message
+		#json_message = json.dumps(json_message)
+		#self.write_message(json_message)
 
 	def on_close(self):
-		return 0
+		if self in clients:
+			print("connection closed")
+			clients.remove(self)
 
 
 class DataThread(threading.Thread):
@@ -51,24 +59,47 @@ class DataThread(threading.Thread):
 	# Aufgabe 3
 	#
 	# Hier muss der Thread initialisiert werden.
-	def __init__(self):
-		return 0
+	def __init__(self, clients):
+		threading.Thread.__init__(self)
+		self.clients = clients
+		self.stopped = False
 	
 	# Aufgabe 3
 	#
 	# Erstellen Sie hier Instanzen von Klassen aus dem ersten Teilversuch		
 	def set_sensorik(self, address_ultrasonic_front, address_ultrasonic_back, address_compass, address_infrared, encoder_pin):
-		return 0
+		self.ultrasonicThreadFront = UltrasonicThread(address_ultrasonic_front)
+		self.ultrasonicThreadRear = UltrasonicThread(address_ultrasonic_back)
+		self.compassThread = CompassThread(address_compass)
+
+		encoder = Encoder(encoder_pin)
+		self.encoderThread = EncoderThread(encoder)
+		self.infraredThread = InfraredThread(address_infrared, encoder)
+	
 
 	# Aufgabe 3
 	#
 	# Hier muessen die Sensorwerte ausgelesen und an alle Clients des Webservers verschickt werden.
 	def run(self):
 		while not self.stopped:
-			continue
+			sensor_data = {
+				"brightness": self.ultrasonicThreadFront.brightness,
+				"distance": self.ultrasonicThreadFront.distance,
+				"rearDistance": self.ultrasonicThreadRear.distance,
+				"speed": self.encoderThread.speed
+			}
+			json_data = {}
+			json_data = json.dumps(sensor_data)
+			for client in self.clients:
+				client.write_message(json_data)
 
 	def stop(self):
 		self.stopped = True
+		self.ultrasonicThreadFront.stop()
+		self.ultrasonicThreadRear.stop()
+		self.compassThread.stop()
+		self.encoderThread.stop()
+		self.infraredThread.stop()
 
 class DrivingThread(threading.Thread):
 	'''Thread zum Fahren des Autos'''
@@ -93,16 +124,42 @@ class DrivingThread(threading.Thread):
 if __name__ == "__main__":
 	print("Main Thread started")
 	clients = []
-	# Websocket Server initialization
-	tornado.options.parse_command_line()
-	app = tornado.web.Application(handlers=[(r"/ws", WebSocketHandler), (r"/", IndexHandler), (r" / ( . * ) ", tornado.web.StaticFileHandler, { "path ": os.path.dirname(__file__)}),])
-	httpServer = tornado.httpserver.HTTPServer(app)
-	httpServer.listen(options.port)
-	print(" Listening on port : ", options.port)
-	tornado.ioloop.IOLoop.instance().start()
-	# Aufgabe 3
+
+	# The GPIO pin to which the encoder is connected
+	encoder_pin = 23
+
+	# Aufgabe 1
 	#
-	# Erstellen und starten Sie hier eine Instanz des DataThread und starten Sie den Webserver .
+	# Tragen Sie die i2c Adressen der Sensoren hier ein
+
+	# The i2c addresses of front and rear ultrasound sensors
+	ultrasonic_front_i2c_address = 0x70
+	ultrasonic_rear_i2c_address = 0x71
+
+	# The i2c address of the compass sensor
+	compass_i2c_address = 0x60 
+
+	# The i2c address of the infrared sensor
+	infrared_i2c_address = 0x04f # Send 0x00 once in the beginning
+
+	try:
+		# Websocket Server initialization
+		tornado.options.parse_command_line()
+		app = tornado.web.Application(handlers=[(r"/ws", WebSocketHandler), (r"/", IndexHandler), (r" / ( . * ) ", tornado.web.StaticFileHandler, { "path ": os.path.dirname(__file__)}),])
+		httpServer = tornado.httpserver.HTTPServer(app)
+		httpServer.listen(options.port)
+		print("Listening on port ", options.port)
+		# Aufgabe 3
+		#
+		# Erstellen und starten Sie hier eine Instanz des DataThread und starten Sie den Webserver .
+		dataThread = DataThread(clients)
+		dataThread.set_sensorik(ultrasonic_front_i2c_address, ultrasonic_rear_i2c_address, compass_i2c_address, infrared_i2c_address, encoder_pin)
+		dataThread.start()
+		tornado.ioloop.IOLoop.instance().start()
+	except KeyboardInterrupt as e:
+		dataThread.stop()
+		print(e)
+		
 
 
 	# Einparken
