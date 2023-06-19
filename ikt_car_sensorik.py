@@ -5,11 +5,13 @@ import threading
 import RPi.GPIO as GPIO
 import smbus
 import math
+import numpy as np
 
 GPIO.setmode(GPIO.BCM)
 
 # 1 indicates /dev/i2c-1 (port I2C1)
 bus = smbus.SMBus(1)
+sleep(1)
 
 #################################################################################
 # Sensors
@@ -47,9 +49,8 @@ class Ultrasonic():
 		sleep(0.07)
 
 		# Read Registers for distance
-		range_high_byte = bus.read_byte_date(self.address, 0x02)
+		range_high_byte = bus.read_byte_data(self.address, 0x02)
 		range_low_byte = bus.read_byte_data(self.address, 0x03)
-		print(type(range_high_byte))
 		distance = (range_high_byte << 8) + range_low_byte
 		return distance
 
@@ -99,13 +100,13 @@ class Compass(object):
 	#
 	# Diese Methode soll den Kompasswert auslesen und zurueckgeben. 
 	def get_bearing(self):
-		bear_high_byte = bus.read_byte_data(self.address, 2)
-		bear_low_byte = bus.read_byte_data(self.address, 3)
+		bear_high_byte = bus.read_byte_data(self.address, 0x02)
+		bear_low_byte = bus.read_byte_data(self.address, 0x03)
 		raw = (bear_high_byte << 8) + bear_low_byte
 		bearing = raw/10.0
 		return bearing
 	
-	def get_compass_direction(angle):
+	def get_compass_direction(self, angle):
 		if angle >= 337.5 or angle < 22.5:
 			return "North"
 		elif angle >= 22.5 and angle < 67.5:
@@ -148,6 +149,7 @@ class CompassThread(threading.Thread):
 		while not self.stopped:
 			self.bearing = self.compass.get_bearing()
 			self.direction = self.compass.get_compass_direction(self.bearing)
+                        sleep(0.1)
 
 	def stop(self):
 		self.stopped = True
@@ -161,22 +163,31 @@ class Infrared(object):
 
 	def __init__(self,address):
 		self.address = address
-		bus.write_byte(self.address, 0x00, 0x00)
-		
-	# Aufgabe 2 
+		bus.write_byte_data(self.address, 0x00, 0x00)
+                y = np.array([10.0, 12.5, 18.0, 40.0,  65.0,  80.0])
+                x = np.array([2.6, 2.11, 1.5, 0.75, 0.5, 0.4])
+                self.poly_coeff = np.polyfit(x, y, 4)
+                self.polynom = np.poly1d(self.poly_coeff)
+
+	# Aufgabe 2
 	#
 	# In dieser Methode soll der gemessene Spannungswert des Infrarotsensors ausgelesen werden.
 	def get_voltage(self):
-		adc_value = bus.read_byte_data(self.address, 0x00)
+		adc_value = bus.read_byte(self.address)
 		return adc_value/255.0 * 5.0
 
 	# Aufgabe 3
 	#
 	# Der Spannungswert soll in einen Distanzwert umgerechnet werden.
+        # y = np.array([10, 12.5, 18, 40.0,  65.0,  80.0])
+        # x = np.array([2.6, 2.11, 1.5, 0.75, 0.5, 0.4])
+        # z = np.polyfit(x, y, 4)
+
 	def get_distance(self):
 		voltage = self.get_voltage()
-		distance = voltage/5.0 * 70 + 10
-		return distance
+		#distance = float(voltage)/5.0 * 70.0 + 10.0
+		distance = self.polynom(voltage)
+                return distance
 
 
 class InfraredThread(threading.Thread):
@@ -186,7 +197,7 @@ class InfraredThread(threading.Thread):
 	distance = 0
 	# length of parking space in cm
 	parking_space_length = 0
-	dist_to_recognice_parking = 3
+	dist_to_recognice_parking = 10
 	start_distance = 0
 	start_travel_distance = 0
 	end_travel_distance = 0
@@ -197,7 +208,8 @@ class InfraredThread(threading.Thread):
 	def __init__(self, address, encoder=None):
 		threading.Thread.__init__(self)
 		self.infrared = Infrared(address)
-		self.encoder = encoder
+		sleep(0.2)
+                self.encoder = encoder
 		self.stopped = False
 		self.start_distance = self.infrared.get_distance()
 		self.start()
@@ -206,6 +218,10 @@ class InfraredThread(threading.Thread):
 		while not self.stopped:
 			self.read_infrared_value()
 			self.calculate_parking_space_length()
+                        #print("START TRABEL DIST: ", self.start_distance)
+                        #print(self.start_distance > (self.distance + self.dist_to_recognice_parking))
+                        #print(self.in_parking_space)
+                        sleep(0.1)
 
 	# Aufgabe 4
 	#
@@ -218,17 +234,20 @@ class InfraredThread(threading.Thread):
 	# Hier soll die Berechnung der Laenge der Parkluecke definiert werden
 	def calculate_parking_space_length(self):
 		# Check if distance has increased more than 3 cm -> next to parking space
-		if self.start_distance > self.distance + self.dist_to_recognice_parking:
+		#print("Start: ", self.start_distance)
+                #print("Current: ", self.distance)
+                #print(self.distance > (self.start_distance + self.dist_to_recognice_parking))
+                if self.distance > (self.start_distance + self.dist_to_recognice_parking):
 			if self.in_parking_space == False:
 				self.in_parking_space = True
-				self.start_travel_distance = self.encoder.get_travel_dist()
+				self.start_travel_distance = self.encoder.get_travelled_dist()
 			elif self.in_parking_space == True:
 				# Update new parking space length as long as we are next to parking space
-				self.parking_space_length = self.encoder.get_travel_dist()-self.start_travel_distance
+				self.parking_space_length = self.encoder.get_travelled_dist()-self.start_travel_distance
 		else:
 			if self.in_parking_space == True:
 				self.in_parking_space = False
-				self.end_travel_distance = self.encoder.get_travel_dist()
+				self.end_travel_distance = self.encoder.get_travelled_dist()
 				# Final parking space length after end of parking space
 				self.parking_space_length = self.end_travel_distance-self.start_travel_distance
 
@@ -245,8 +264,8 @@ class Encoder(object):
 	# Aufgabe 2
 	#
 	# Wieviel cm betraegt ein einzelner Encoder-Schritt?
-	D = 3 # Durchmesser
-	N = 20 # Number of steps
+	D = 7 # Durchmesser
+	N = 32 # Number of steps
 	STEP_LENGTH = math.pi*D/N # in cm
 
 	# number of encoder steps
@@ -256,11 +275,11 @@ class Encoder(object):
 		self.pin = pin
 		GPIO.setmode(GPIO.BCM)
 		GPIO.setup(self.pin, GPIO.IN)
-		GPIO.add_event_detect(self.pin, GPIO.BOTH, callback=self.count, bouncetime = 1)
+		GPIO.add_event_detect(self.pin, GPIO.BOTH, callback=self.increment_count, bouncetime = 1)
 
 
-	def count(self, channel):
-		self.count += 1
+	def increment_count(self, channel):
+		self.count = self.count + 1
 
 	# Aufgabe 2
 	#
@@ -317,6 +336,7 @@ class EncoderThread(threading.Thread):
 		self.distance = current_distance
 		self.prev_time = current_time
 		self.prev_distance = current_distance
+                sleep(0.1)
 
 
 	def stop(self):
@@ -340,7 +360,7 @@ if __name__ == "__main__":
 	ultrasonic_rear_i2c_address = 0x71
 
 	# The i2c address of the compass sensor
-	compass_i2c_address = 0x60 
+	compass_i2c_address = 0x60
 
 	# The i2c address of the infrared sensor
 	infrared_i2c_address = 0x04f # Send 0x00 once in the beginning
@@ -358,19 +378,23 @@ if __name__ == "__main__":
 	
 	while True:
 		try:
-			# Clear console 
+			# Clear console
 			os.system("clear")
 			# Output the values to the console
 			print("Relative distance: ", encoderThread.distance)
 			print("Car speed: ", encoderThread.speed)
 			print("Compass direction: ", compassThread.direction)
-			print("Distance to obstacle (front): ", ultrasonicThreadFront.distance)
+			print("Compass bearing: ", compassThread.bearing)
+                        print("Distance to obstacle (front): ", ultrasonicThreadFront.distance)
 			print("Distance to obstacle (read): ", ultrasonicThreadRear.distance)
 			print("Distance to obstacle (side): ", infraredThread.distance)
 			print("Mean brightness: ", (ultrasonicThreadFront.brightness+ultrasonicThreadRear.brightness)/2.0)
 			print("Parking space length: ", infraredThread.parking_space_length)
+			sleep(0.2)
 		except KeyboardInterrupt:
 			break
+                except IOError:
+                        print("BUS ERROR")
 
 	# Cleanup
 	ultrasonicThreadFront.stop()

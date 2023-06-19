@@ -61,7 +61,7 @@
 		// Aufgabe 4
 		//
 		// Damit die Daten dargestellt werden können muss ein Websocket geöffnet werden, der bei jeder neuen Nachricht die Daten aus dieser Nachricht rausholt und visualisiert.
-		var dataSocket = new WebSocket("ws://localhost:8081/ws");
+		var dataSocket = new WebSocket("ws://172.23.90.35:8081/ws");
 
 		dataSocket.onopen = function () {
 			console.log("connected")
@@ -105,7 +105,7 @@
 		
 		// Speed Chart
 		var speedChart = new SmoothieChart({
-			minValue: 0, maxValue: 300,
+			minValue: 0, maxValue: 30,
 			grid: {
 				strokeStyle: "rgb(125, 0, 0)", fillStyle: "rgb(60, 0, 0)",
 				lineWidth: 1, millisPerLine: 250, verticalSections: 6
@@ -117,7 +117,7 @@
 
 		// Bearing Chart
 		var bearingChart = new SmoothieChart({
-			minValue: 0, maxValue: 300,
+			minValue: 0, maxValue: 359,
 			grid: {
 				strokeStyle: 'rgb(125, 0, 0)', fillStyle: 'rgb(60, 0, 0)',
 				lineWidth: 1, millisPerLine: 250, verticalSections: 6
@@ -129,7 +129,7 @@
 
 		// Distance Chart
 		var distanceChart = new SmoothieChart({
-			minValue: 0, maxValue: 300,
+			minValue: 10, maxValue: 80,
 			grid: {
 				strokeStyle: 'rgb(125, 0, 0)', fillStyle: 'rgb(60, 0, 0)',
 				lineWidth: 1, millisPerLine: 250, verticalSections: 6
@@ -141,7 +141,7 @@
 
 		// ParkingLengthChart
 		var parkingLengthChart = new SmoothieChart({
-			minValue: 0, maxValue: 300,
+			minValue: 0, maxValue: 60,
 			grid: {
 				strokeStyle: 'rgb(125, 0, 0)', fillStyle: 'rgb(60, 0, 0)',
 				lineWidth: 1, millisPerLine: 250, verticalSections: 6

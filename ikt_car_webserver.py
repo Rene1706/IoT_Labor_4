@@ -9,8 +9,8 @@ import json
 import os
 
 import threading
-from ikt_car_sensorik_test import *
-#import _servo_ctrl
+from ikt_car_sensorik import *
+from servo_ctrl import Motor, Steering
 from math import acos, sqrt, degrees
 import time
 
@@ -105,7 +105,7 @@ class DataThread(threading.Thread):
 			json_data = json.dumps(sensor_data)
 			for client in self.clients:
 				client.write_message(json_data)
-			sleep(0.1)
+			sleep(0.2)
 
 	def stop(self):
 		self.stopped = True
@@ -129,13 +129,26 @@ class DrivingThread(threading.Thread):
 		self.stopped = False
 		self.start_time = None
 		self.parking_driven_length_start = None
+                # Initialisierung Motor und steering object 
+                self.motor = Motor(1)
+                self.steering = Steering(2)
+                # Use Object function to reset speed/angle
+                self.motor.set_speed(0)
+                self.steering.set_angle(0)
+                self.iteration_counter = 0
 		
 	# Einparken
 	#
 	# Definieren Sie einen Thread, der auf die ueber den Webserver erhaltenen Befehle reagiert und den Einparkprozess durchfuehrt
 	def run(self):
-		while True:
+		while not self.stopped:
 			if parking_event.is_set():
+                                self.motor.set_speed(10)
+                                #self.steering.set_angle(45)
+                                #sleep(3)
+                                #self.motor.set_speed(0)
+                                #self.steering.set_angle(0)
+                                #sleep(3)
 				# Check/Update parking timer
 				if not self.start_time:
 					self.start_time = time.time()
@@ -147,15 +160,33 @@ class DrivingThread(threading.Thread):
 					self.parking_driven_length_start = self.dataThread.encoderThread.distance
 				driven_distance = self.dataThread.encoderThread.distance - self.parking_driven_length_start
 				self.dataThread.parking_distance = float(round(driven_distance, 2))
+				if self.iteration_counter < 20:
+                                        self.motor.set_speed(4)
+                                elif self.iteration_counter < 25:
+                                        self.motor.set_speed(0)
+                                elif self.iteration_counter < 40:
+                                        self.steering.set_angle(45)
+                                        self.motor.set_speed(-3)
+                                elif self.iteration_counter < 50:
+                                        self.steering.set_angle(0)
+                                elif self.iteration_counter < 60:
+                                        self.steering.set_angle(-45)
+                                elif self.iteration_counter < 70:
+                                        self.motor.set_speed(0)
+                                        self.steering.set_angle(0)
+                                self.iteration_counter += 1
 			else:
 				# Reset parking timer
+                                self.motor.set_speed(0)
 				self.start_time = None
 				self.dataThread.parking_time = 0.0
-				# Reset parking driven length
+			        # Reset parking driven length
 				self.parking_driven_length_start = None
 				self.dataThread.parking_distance = 0.0
+                        sleep(0.1)
 
 	def stop(self):
+                self.stopped = True
 		parking_event.clear()
 		self.dataThread.stop()
 		print("Parking thred stopped")
